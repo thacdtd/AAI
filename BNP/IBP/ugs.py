@@ -5,10 +5,12 @@ This code was modified from the code originally written by David Andrzejewski (d
 Implements uncollapsed Gibbs sampling for the linear-Gaussian infinite latent feature model (IBP).
 """
 
-import numpy, scipy
-import math, random
-from BNP.IBP.gs import GibbsSampling
+import numpy
+import scipy
+import random
 import scipy.stats
+from BNP.IBP.gs import GibbsSampling
+
 
 # We will be taking log(0) = -Inf, so turn off this warning
 numpy.seterr(divide='ignore')

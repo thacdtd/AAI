@@ -138,9 +138,9 @@ def example_likelihood_fn(data, i, clustering, cluster_assn):
 
 
 if __name__ == '__main__':
-    true_means = [0, 10, 12]
+    true_means = [5, 10, 12]
     data = numpy.concatenate(
-        (stats.norm.rvs(0, 1, size=200), stats.norm.rvs(10, 1, size=200), stats.norm.rvs(12, 1, size=200)))
+        (stats.norm.rvs(5, 1, size=200), stats.norm.rvs(10, 1, size=200), stats.norm.rvs(12, 1, size=200)))
     random.shuffle(data)
     crp_model = CRPClusterModel(1.0, example_likelihood_fn)
     clustering, cluster_assn = crp_model._gibbs_sampling_crp(data)

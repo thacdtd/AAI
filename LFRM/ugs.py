@@ -270,12 +270,12 @@ class UncollapsedGibbsSampling(GibbsSampling):
     """
     compute the log-likelihood of A
     """
-    def log_likelihood_A(self):
-        log_likelihood = -0.5 * self._K * self._D * numpy.log(2 * numpy.pi * self._sigma_a * self._sigma_a)
+    def log_likelihood_W(self):
+        log_likelihood = -0.5 * self._K * self._K * numpy.log(2 * numpy.pi * self._sigma_w * self._sigma_w)
         #for k in range(self._K):
         #    A_prior[k, :] = self._mean_a[0, :]
-        A_prior = numpy.tile(self._A_prior, (self._K, 1))
-        log_likelihood -= numpy.trace(numpy.dot((self._A - A_prior).transpose(), (self._A - A_prior))) * 0.5 / (self._sigma_a ** 2)
+        W_prior = numpy.tile(self._W_prior, (self._K, 1))
+        log_likelihood -= numpy.trace(numpy.dot((self._W - W_prior).transpose(), (self._W - W_prior))) * 0.5 / (self._sigma_w ** 2)
         
         return log_likelihood
     
@@ -284,7 +284,7 @@ class UncollapsedGibbsSampling(GibbsSampling):
     """
     def log_likelihood_model(self):
         #print self.log_likelihood_X(self._X, self._Z, self._A), self.log_likelihood_A(), self.log_likelihood_Z()
-        return self.log_likelihood_Y() + self.log_likelihood_A() + self.log_likelihood_Z()
+        return self.log_likelihood_Y() + self.log_likelihood_W() + self.log_likelihood_Z()
 
     """
     sample noise variances, i.e., sigma_x

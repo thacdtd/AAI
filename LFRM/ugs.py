@@ -23,14 +23,14 @@ class UncollapsedGibbsSampling(GibbsSampling):
     @param sigma_a: standard derivation of the feature, often referred as sigma_f as well
     @param initializ_Z: seeded Z matrix
     """
-    def _initialize(self, data, alpha=1.0, sigma_f=1.0, sigma_x=1.0, initial_Z=None, A_prior=None, initial_A=None):
+    def _initialize(self, data, alpha=1.0, sigma_f=1.0, sigma_x=1.0, initial_W=None, A_prior=None, initial_A=None):
         # Data matrix
         super(UncollapsedGibbsSampling, self)._initialize(self.center_data(data), alpha, sigma_f, sigma_x, A_prior, initial_Z)
 
-        if initial_A is not None:
+        if initial_W is not None:
             # this will replace the A matrix generated in the super class. 
-            self._A = initial_A
-        assert(self._A.shape == (self._K, self._D))
+            self._W = initial_W
+        assert(self._W.shape == (self._K, self._K))
     
     """
     sample the corpus to train the parameters
@@ -42,8 +42,8 @@ class UncollapsedGibbsSampling(GibbsSampling):
             shutil.rmtree(directory)
             
         assert(self._Z.shape == (self._N, self._K))
-        assert(self._A.shape == (self._K, self._D))
-        assert(self._X.shape == (self._N, self._D))
+        assert(self._W.shape == (self._K, self._K))
+        assert(self._Y.shape == (self._N, self._N))
         
         #sample the total data
         for iter in xrange(iteration):
@@ -60,19 +60,19 @@ class UncollapsedGibbsSampling(GibbsSampling):
             # regularize matrices
             self.regularize_matrices()    
 
-            self.sample_A()
+            self.sample_W()
             
             if self._alpha_hyper_parameter is not None:
                 self._alpha = self.sample_alpha()
             
-            if self._sigma_x_hyper_parameter is not None:
-                self._sigma_x = self.sample_sigma_x(self._sigma_x_hyper_parameter)
+            if self._sigma_y_hyper_parameter is not None:
+                self._sigma_y = self.sample_sigma_y(self._sigma_y_hyper_parameter)
             
-            if self._sigma_a_hyper_parameter is not None:
-                self._sigma_a = self.sample_sigma_a(self._sigma_a_hyper_parameter)
+            if self._sigma_w_hyper_parameter is not None:
+                self._sigma_w = self.sample_sigma_w(self._sigma_w_hyper_parameter)
                 
             print("iteration: %i\tK: %i\tlikelihood: %f" % (iter, self._K, self.log_likelihood_model()))
-            print("alpha: %f\tsigma_a: %f\tsigma_x: %f" % (self._alpha, self._sigma_a, self._sigma_x))
+            print("alpha: %f\tsigma_a: %f\tsigma_x: %f" % (self._alpha, self._sigma_w, self._sigma_y))
             
             if (iter + 1) % self._snapshot_interval == 0:
                 self.export_snapshot(directory, iter + 1)
@@ -104,13 +104,13 @@ class UncollapsedGibbsSampling(GibbsSampling):
 
                 # compute the log likelihood when Znk=0
                 self._Z[object_index, feature_index] = 0
-                prob_z0 = self.log_likelihood_X(self._X[[object_index], :], self._Z[[object_index], :])
+                prob_z0 = self.log_likelihood_Y(self._Y[[object_index], :], self._Z[[object_index], :])
                 prob_z0 += log_prob_z0[feature_index]
                 prob_z0 = numpy.exp(prob_z0)
                 
                 # compute the log likelihood when Znk=1
                 self._Z[object_index, feature_index] = 1
-                prob_z1 = self.log_likelihood_X(self._X[[object_index], :], self._Z[[object_index], :])
+                prob_z1 = self.log_likelihood_Y(self._Y[[object_index], :], self._Z[[object_index], :])
                 prob_z1 += log_prob_z1[feature_index]
                 prob_z1 = numpy.exp(prob_z1)
                 
@@ -136,9 +136,9 @@ class UncollapsedGibbsSampling(GibbsSampling):
             return False
 
         # generate new features from a normal distribution with mean 0 and variance sigma_a, a K_new-by-D matrix
-        A_prior = numpy.tile(self._A_prior, (K_temp, 1))
-        A_temp = numpy.random.normal(0, self._sigma_a, (K_temp, self._D)) + A_prior
-        A_new = numpy.vstack((self._A[[k for k in xrange(self._K) if k not in singleton_features], :], A_temp))
+        W_prior = numpy.tile(self._W_prior, (K_temp, 1))
+        W_temp = numpy.random.normal(0, self._sigma_w, (K_temp, self._K)) + W_prior
+        W_new = numpy.vstack((self._W[[k for k in xrange(self._K) if k not in singleton_features], :], W_temp))
         # generate new z matrix row
         #print K_temp, object_index, [k for k in xrange(self._K) if k not in singleton_features], self._Z[[object_index], [k for k in xrange(self._K) if k not in singleton_features]].shape, numpy.ones((len(object_index), K_temp)).shape
         Z_new = numpy.hstack((self._Z[[object_index], [k for k in xrange(self._K) if k not in singleton_features]], numpy.ones((len(object_index), K_temp))))
@@ -146,20 +146,20 @@ class UncollapsedGibbsSampling(GibbsSampling):
         K_new = self._K + K_temp - len(singleton_features)
         
         # compute the probability of generating new features
-        prob_new = numpy.exp(self.log_likelihood_X(self._X[object_index, :], Z_new, A_new))
+        prob_new = numpy.exp(self.log_likelihood_X(self._X[object_index, :], Z_new, W_new))
         
         # construct the A_old and Z_old
-        A_old = self._A
+        W_old = self._W
         Z_old = self._Z[object_index, :]
         K_old = self._K
 
-        assert(A_old.shape == (K_old, self._D))
-        assert(A_new.shape == (K_new, self._D))
+        assert(W_old.shape == (K_old, self._K))
+        assert(W_new.shape == (K_new, self._K))
         assert(Z_old.shape == (len(object_index), K_old))
         assert(Z_new.shape == (len(object_index), K_new))
         
         # compute the probability of using old features
-        prob_old = numpy.exp(self.log_likelihood_X(self._X[object_index, :], Z_old, A_old))
+        prob_old = numpy.exp(self.log_likelihood_X(self._X[object_index, :], Z_old, W_old))
         
         # compute the probability of generating new features
         prob_new = prob_new / (prob_old + prob_new)
@@ -167,7 +167,7 @@ class UncollapsedGibbsSampling(GibbsSampling):
         # if we accept the proposal, we will replace old A and Z matrices
         if random.random() < prob_new:
             # construct A_new and Z_new
-            self._A = A_new
+            self._W = W_new
             self._Z = numpy.hstack((self._Z[:, [k for k in xrange(self._K) if k not in singleton_features]], numpy.zeros((self._N, K_temp))))
             self._Z[object_index, :] = Z_new
             self._K = K_new
@@ -177,15 +177,15 @@ class UncollapsedGibbsSampling(GibbsSampling):
 
     """
     """
-    def sample_A(self):
+    def sample_W(self):
         # sample every feature
-        order = numpy.random.permutation(self._D)
+        order = numpy.random.permutation(self._K)
         for (observation_counter, observation_index) in enumerate(order):
             # sample A_d
-            (mean, std_dev) = self.sufficient_statistics_A([observation_index])
+            (mean, std_dev) = self.sufficient_statistics_W([observation_index])
             assert(std_dev.shape == (self._K, self._K))
             assert(mean.shape == (self._K, len([observation_index])))
-            self._A[:, [observation_index]] = numpy.dot(std_dev, numpy.random.normal(0, 1, (self._K, len([observation_index])))) + mean
+            self._W[:, [observation_index]] = numpy.dot(std_dev, numpy.random.normal(0, 1, (self._K, len([observation_index])))) + mean
         
         return
     
@@ -193,33 +193,33 @@ class UncollapsedGibbsSampling(GibbsSampling):
     compute the mean and co-variance, i.e., sufficient statistics, of A
     @param observation_index: a list data type, recorded down the observation indices (column numbers) of A we want to compute
     """
-    def sufficient_statistics_A(self, observation_index=None):
+    def sufficient_statistics_W(self, observation_index=None):
         if observation_index == None:
-            X = self._X
-            observation_index = range(self._D)
+            Y = self._Y
+            observation_index = range(self._N)
         else:
-            X = self._X[:, observation_index]
+            Y = self._Y[:, observation_index]
         
         assert(type(observation_index) == list)
         
-        D = X.shape[1]
+        N = Y.shape[1]
         #mean_a = numpy.zeros((self._K, D))
         #for k in range(self._K):
         #    mean_a[k, :] = self._mean_a[0, observation_index]
-        A_prior = numpy.tile(self._A_prior[0, observation_index], (self._K, 1))
+        W_prior = numpy.tile(self._W_prior[0, observation_index], (self._K, 1))
 
-        assert(X.shape == (self._N, D))
+        assert(Y.shape == (self._N, N))
         assert(self._Z.shape == (self._N, self._K))
-        assert(A_prior.shape == (self._K, D))
+        assert(W_prior.shape == (self._K, K))
         
         # compute M = (Z' * Z - (sigma_x^2) / (sigma_a^2) * I)^-1
         M = self.compute_M()
         # compute the mean of the matrix A
-        mean_A = numpy.dot(M, numpy.dot(self._Z.transpose(), X) + (self._sigma_x / self._sigma_a) ** 2 * A_prior)
+        mean_W = numpy.dot(M, numpy.dot(self._Z.transpose(), Y) + (self._sigma_y / self._sigma_w) ** 2 * W_prior)
         # compute the co-variance of the matrix A
-        std_dev_A = numpy.linalg.cholesky(self._sigma_x ** 2 * M).transpose()
+        std_dev_W = numpy.linalg.cholesky(self._sigma_y ** 2 * M).transpose()
         
-        return (mean_A, std_dev_A)
+        return (mean_W, std_dev_W)
     
     """
     remove the empty column in matrix Z and the corresponding feature in A
@@ -233,11 +233,11 @@ class UncollapsedGibbsSampling(GibbsSampling):
         
         #print self._K, indices, [k for k in range(self._K) if k not in indices]
         self._Z = self._Z[:, [k for k in range(self._K) if k not in indices]]
-        self._A = self._A[[k for k in range(self._K) if k not in indices], :]
+        self._W = self._W[[k for k in range(self._K) if k not in indices], :]
         
         self._K = self._Z.shape[1]
         assert(self._Z.shape == (self._N, self._K))
-        assert(self._A.shape == (self._K, self._D))
+        assert(self._W.shape == (self._K, self._K))
 
     """
     compute the log-likelihood of the data X
@@ -245,30 +245,26 @@ class UncollapsedGibbsSampling(GibbsSampling):
     @param Z: a 2-D numpy boolean array
     @param A: a 2-D numpy array, integrate A out if it is set to None
     """
-    def log_likelihood_X(self, X=None, Z=None, A=None):
-        if A == None:
-            A = self._A
+    def log_likelihood_Y(self, Y=None, Z=None, W=None):
+        if W == None:
+            W = self._W
         if Z == None:
             Z = self._Z
-        if X == None:
-            X = self._X
+        if Y == None:
+            Y = self._Y
             
-        assert(X.shape[0] == Z.shape[0])
-        (N, D) = X.shape
+        assert(Y.shape[0] == Z.shape[0])
+        (N, N) = Y.shape
         (N, K) = Z.shape
-        assert(A.shape == (K, D))
-        
-        log_likelihood = X - numpy.dot(Z, A)
-        
-        (row, column) = log_likelihood.shape
-        if row > column:
-            log_likelihood = numpy.trace(numpy.dot(log_likelihood.transpose(), log_likelihood))
-        else:
-            log_likelihood = numpy.trace(numpy.dot(log_likelihood, log_likelihood.transpose()))
-        
-        log_likelihood = -0.5 * log_likelihood / numpy.power(self._sigma_x, 2)
-        log_likelihood -= N * D * 0.5 * numpy.log(2 * numpy.pi * numpy.power(self._sigma_x, 2))
-                       
+        assert(W.shape == (K, K))
+
+        log_likelihood = 1.0
+
+        for i in range(0, N):
+            for j in range(0, N):
+                temp = Z[i] * W * Z[j].transpose()
+                log_likelihood *= self.sigmoid(temp)
+
         return log_likelihood
     
     """
@@ -288,7 +284,7 @@ class UncollapsedGibbsSampling(GibbsSampling):
     """
     def log_likelihood_model(self):
         #print self.log_likelihood_X(self._X, self._Z, self._A), self.log_likelihood_A(), self.log_likelihood_Z()
-        return self.log_likelihood_X() + self.log_likelihood_A() + self.log_likelihood_Z()
+        return self.log_likelihood_Y() + self.log_likelihood_A() + self.log_likelihood_Z()
 
     """
     sample noise variances, i.e., sigma_x
@@ -301,6 +297,12 @@ class UncollapsedGibbsSampling(GibbsSampling):
     """
     def sample_sigma_a(self, sigma_a_hyper_parameter):
         return self.sample_sigma(self._sigma_a_hyper_parameter, self._A - numpy.tile(self._A_prior, (self._K, 1)))
+
+    # Sigmoid function
+    def sigmoid(self, x):
+        # compute and return the sigmoid activation value for a
+        # given input value
+        return 1.0 / (1 + numpy.exp(-x))
     
 """
 run IBP on the synthetic 'cambridge bars' dataset, used in the original paper.

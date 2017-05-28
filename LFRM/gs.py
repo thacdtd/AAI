@@ -18,8 +18,8 @@ class GibbsSampling(object):
 
     def __init__(self,  # real_valued_latent_feature=True,
                  alpha_hyper_parameter=None,
-                 sigma_a_hyper_parameter=None,
-                 sigma_x_hyper_parameter=None,
+                 sigma_w_hyper_parameter=None,
+                 sigma_y_hyper_parameter=None,
                  metropolis_hastings_k_new=True,
                  snapshot_interval=10):
         # initialize the hyper-parameter for sampling _alpha
@@ -28,21 +28,21 @@ class GibbsSampling(object):
         self._alpha_hyper_parameter = alpha_hyper_parameter
         # initialize the hyper-parameter for sampling _sigma_x
         # a value of None is a gentle way to say "do not sampling _sigma_x"
-        assert (sigma_x_hyper_parameter is None or type(sigma_x_hyper_parameter) == tuple)
-        self._sigma_x_hyper_parameter = sigma_x_hyper_parameter
+        assert (sigma_y_hyper_parameter is None or type(sigma_y_hyper_parameter) == tuple)
+        self._sigma_y_hyper_parameter = sigma_y_hyper_parameter
         # initialize the hyper-parameter for sampling _sigma_a
         # a value of None is a gentle way to say "do not sampling _sigma_a"
-        assert (sigma_a_hyper_parameter is None or type(sigma_a_hyper_parameter) == tuple)
-        self._sigma_a_hyper_parameter = sigma_a_hyper_parameter
+        assert (sigma_w_hyper_parameter is None or type(sigma_w_hyper_parameter) == tuple)
+        self._sigma_w_hyper_parameter = sigma_w_hyper_parameter
 
         # self._real_valued_latent_feature = real_valued_latent_feature
         self._metropolis_hastings_k_new = metropolis_hastings_k_new
 
         self._snapshot_interval = snapshot_interval
 
-        self._x_title = "X-matrix-"
+        self._y_title = "Y-matrix-"
         self._z_title = "Z-matrix-"
-        self._a_title = "A-matrix-"
+        self._w_title = "W-matrix-"
         self._hyper_parameter_vector_title = "Hyper-parameter-vector-"
 
     """
@@ -54,15 +54,15 @@ class GibbsSampling(object):
     """
 
     @abc.abstractmethod
-    def _initialize(self, data, alpha=1.0, sigma_a=1.0, sigma_x=1.0, A_prior=None, initial_Z=None):
+    def _initialize(self, data, alpha=1.0, sigma_w=1.0, sigma_y=1.0, W_prior=None, initial_Z=None):
         self._alpha = alpha
-        self._sigma_x = sigma_x
-        self._sigma_a = sigma_a
+        self._sigma_y = sigma_y
+        self._sigma_w = sigma_w
 
         # Data matrix
         # self._X = self.center_data(data)
-        self._X = data
-        (self._N, self._D) = self._X.shape
+        self._Y = data
+        (self._N, self._N) = self._Y.shape
 
         if initial_Z is None:
             # initialize Z from IBP(alpha)
@@ -79,14 +79,14 @@ class GibbsSampling(object):
         # record down the number of features
         self._K = self._Z.shape[1]
 
-        if A_prior is None:
-            self._A_prior = numpy.zeros((1, self._D))
+        if W_prior is None:
+            self._W_prior = numpy.zeros((1, self._N))
         else:
-            self._A_prior = A_prior
-        assert (self._A_prior.shape == (1, self._D))
+            self._W_prior = W_prior
+        assert (self._W_prior.shape == (1, self._N))
 
-        self._A = self.map_estimate_A()
-        assert (self._A.shape == (self._K, self._D))
+        self._W = self.map_estimate_W()
+        assert (self._W.shape == (self._K, self._K))
 
         return
 
@@ -119,9 +119,9 @@ class GibbsSampling(object):
     todo: 2D-prior on A when initializing A matrix
     """
 
-    def map_estimate_A(self):
-        (mean, std_dev) = self.sufficient_statistics_A()
-        assert (mean.shape == (self._K, self._D))
+    def map_estimate_W(self):
+        (mean, std_dev) = self.sufficient_statistics_W()
+        assert (mean.shape == (self._K, self._K))
 
         return mean
 
@@ -227,7 +227,7 @@ class GibbsSampling(object):
             Z = self._Z
 
         K = Z.shape[1]
-        M = numpy.linalg.inv(numpy.dot(Z.transpose(), Z) + (self._sigma_x / self._sigma_a) ** 2 * numpy.eye(K))
+        M = numpy.linalg.inv(numpy.dot(Z.transpose(), Z) + (self._sigma_y / self._sigma_w) ** 2 * numpy.eye(K))
         return M
 
     """
@@ -235,15 +235,15 @@ class GibbsSampling(object):
     @param observation_index: a list data type, recorded down the observation indices (column numbers) of A we want to compute
     """
 
-    def sufficient_statistics_A(self):
+    def sufficient_statistics_W(self):
         # compute M = (Z' * Z - (sigma_x^2) / (sigma_a^2) * I)^-1
         M = self.compute_M()
         # compute the mean of the matrix A
-        mean_A = numpy.dot(M, numpy.dot(self._Z.transpose(), self._X))
+        mean_W = numpy.dot(M, numpy.dot(self._Z.transpose(), self._X))
         # compute the co-variance of the matrix A
-        std_dev_A = numpy.linalg.cholesky(self._sigma_x ** 2 * M).transpose()
+        std_dev_W = numpy.linalg.cholesky(self._sigma_y ** 2 * M).transpose()
 
-        return (mean_A, std_dev_A)
+        return (mean_W, std_dev_W)
 
     """
     @param directory: the export directory
@@ -255,10 +255,10 @@ class GibbsSampling(object):
         if not os.path.exists(directory):
             os.mkdir(directory)
         assert (directory.endswith("/"))
-        numpy.savetxt(directory + self._a_title + str(index), self._A)
-        numpy.savetxt(directory + self._x_title + str(index), self._X)
+        numpy.savetxt(directory + self._w_title + str(index), self._W)
+        numpy.savetxt(directory + self._y_title + str(index), self._Y)
         numpy.savetxt(directory + self._z_title + str(index), self._Z)
-        vector = numpy.array([self._alpha, self._sigma_a, self._sigma_x])
+        vector = numpy.array([self._alpha, self._sigma_w, self._sigma_y])
         numpy.savetxt(directory + self._hyper_parameter_vector_title + str(index), vector)
         print "successfully export the snapshot to " + directory + " for iteration " + str(index) + "..."
 
@@ -269,14 +269,14 @@ class GibbsSampling(object):
 
     def import_snapshot(self, directory, index):
         assert (directory.endswith("/"))
-        self._A = numpy.loadtxt(directory + self._a_title + str(index))
-        self._X = numpy.loadtxt(directory + self._x_title + str(index))
+        self._W = numpy.loadtxt(directory + self._w_title + str(index))
+        self._Y = numpy.loadtxt(directory + self._y_title + str(index))
         self._Z = numpy.loadtxt(directory + self._z_title + str(index))
         (self._N, self._K) = self._Z.shape
-        (self._N, self._D) = self._X.shape
-        assert (self._Z.shape[0] == self._X.shape[0])
-        assert (self._A.shape == (self._K, self._D))
-        (self._alpha, self._sigma_a, self._sigma_x) = numpy.loadtxt(
+        (self._N, self._N) = self._Y.shape
+        assert (self._Z.shape[0] == self._y.shape[0])
+        assert (self._W.shape == (self._K, self._K))
+        (self._alpha, self._sigma_w, self._sigma_y) = numpy.loadtxt(
             directory + self._hyper_parameter_vector_title + str(index))
         print "successfully import the snapshot from " + directory + " for iteration " + str(index) + "..."
 
@@ -286,6 +286,6 @@ class GibbsSampling(object):
 
     @staticmethod
     def center_data(data):
-        (N, D) = data.shape
+        (N, N) = data.shape
         data = data - numpy.tile(data.mean(axis=0), (N, 1))
         return data

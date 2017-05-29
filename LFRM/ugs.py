@@ -72,7 +72,7 @@ class UncollapsedGibbsSampling(GibbsSampling):
             #    self._sigma_w = self.sample_sigma_w(self._sigma_w_hyper_parameter)
                 
             print("iteration: %i\tK: %i\tlikelihood: %f" % (iter, self._K, self.log_likelihood_model()))
-            print("alpha: %f\tsigma_a: %f\tsigma_x: %f" % (self._alpha, self._sigma_w, self._sigma_y))
+            # print("alpha: %f\tsigma_a: %f\tsigma_x: %f" % (self._alpha, self._sigma_w, self._sigma_y))
             
             if (iter + 1) % self._snapshot_interval == 0:
                 self.export_snapshot(directory, iter + 1)
@@ -185,13 +185,11 @@ class UncollapsedGibbsSampling(GibbsSampling):
     Metropolis-Hasting sample W
     """
     def sample_W(self):
-        W_prior = numpy.copy(self._W)
-        W_new = numpy.random.normal(0, self._sigma_w, (self._K, self._K)) + W_prior
+        W_old = numpy.copy(self._W)
+        W_new = numpy.random.normal(numpy.mean(self._W), self._sigma_w, (self._K, self._K))
 
         # compute the probability of generating new features
         prob_new = numpy.exp(self.log_likelihood_Y(self._Y, self._Z, W_new))
-
-        W_old = numpy.copy(self._W)
 
         assert (W_old.shape == (self._K, self._K))
         assert (W_new.shape == (self._K, self._K))
@@ -252,11 +250,13 @@ class UncollapsedGibbsSampling(GibbsSampling):
 
         log_likelihood = 1.0
 
-        for i in range(0, N):
-            for j in range(0, N):
-                temp = numpy.dot(numpy.dot(Z[i, :], W), Z[j, :].transpose())
+        for i in range(N):
+            for j in range(N):
+                temp = 0
+                for k in range(K):
+                    for k_prime in range(K):
+                        temp += Z[i][k] * W[k][k_prime] * Z[j][k_prime]
                 log_likelihood *= self.sigmoid(temp)
-
         return numpy.log(log_likelihood)
     
     """
@@ -344,6 +344,7 @@ if __name__ == '__main__':
                         [0, 1, 1, 0, 1],
                         [1, 1, 0, 1, 1],
                         [1, 0, 1, 1, 1]])
+    """
     data = numpy.array([[1, 0, 1, 0, 1, 0, 0, 1, 1],
                         [0, 1, 0, 0, 0, 0, 1, 0, 1],
                         [1, 0, 1, 0, 0, 0, 1, 0, 1],
@@ -353,14 +354,13 @@ if __name__ == '__main__':
                         [0, 1, 1, 0, 1, 0, 1, 0, 0],
                         [1, 0, 0, 1, 0, 1, 0, 1, 1],
                         [1, 1, 1, 0, 1, 0, 0, 1, 1]])
-    """
 
     # initialize the model
     #ibp = UncollapsedGibbsSampling(10)
     ibp = UncollapsedGibbsSampling(alpha_hyper_parameter, sigma_y_hyper_parameter, sigma_w_hyper_parameter, True)
     #ibp = UncollapsedGibbsSampling(alpha_hyper_parameter)
-    data = ibp.load_lazega()
-    ibp._initialize(data, 1.0, 0.2, 0.5, None, None, None)
+    #data = ibp.load_kinship()
+    ibp._initialize(data, 1.0, 1.0, 0.5, None, None, None)
     #ibp._initialize(data[0:1000, :], 1.0, 1.0, 1.0, None, features[0:1000, :])
     #print ibp._Z, "\n", ibp._A
     ibp.sample(300)

@@ -3,6 +3,8 @@
 from math import *
 #from RandomArray import *
 from matplotlib.pylab import *
+import numpy
+
 
 def sdnorm(z):
     """
@@ -15,11 +17,11 @@ alpha = 1
 x = 0.
 vec = []
 vec.append(x)
-innov = uniform(-alpha,alpha,n) #random inovation, uniform proposal distribution
+innov = numpy.random.uniform(-alpha,alpha,n) #random inovation, uniform proposal distribution
 for i in xrange(1,n):
     can = x + innov[i] #candidate
     aprob = min([1.,sdnorm(can)/sdnorm(x)]) #acceptance probability
-    u = uniform(0,1)
+    u = numpy.random.uniform(0,1)
     if u < aprob:
         x = can
         vec.append(x)

@@ -128,8 +128,8 @@ class GibbsSampling(object):
     """
     @staticmethod
     def sample_sigma(sigma_hyper_parameter, matrix):
-        assert(sigma_hyper_parameter != None)
-        assert(matrix != None)
+        assert(sigma_hyper_parameter is not None)
+        assert(matrix is not None)
         assert(type(sigma_hyper_parameter) == tuple)
         assert(type(matrix) == numpy.ndarray)
         

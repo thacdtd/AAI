@@ -353,7 +353,7 @@ class cmNDIRM:
 
         a_min = numpy.amin(self.matrix_w)
         print a_min
-        llh = self.sample(10)
+        llh = self.sample(100)
 
         #print vec
         print llh

@@ -35,6 +35,8 @@ class GibbsSampling(object):
         assert (sigma_w_hyper_parameter is None or type(sigma_w_hyper_parameter) == tuple)
         self._sigma_w_hyper_parameter = sigma_w_hyper_parameter
 
+        self._alpha = 1.0
+
         # self._real_valued_latent_feature = real_valued_latent_feature
         self._metropolis_hastings_k_new = metropolis_hastings_k_new
 
@@ -72,6 +74,8 @@ class GibbsSampling(object):
 
         assert (self._Z.shape[0] == self._N)
 
+        print self._Z
+
         # make sure Z matrix is a binary matrix
         assert (self._Z.dtype == numpy.int)
         assert (self._Z.max() == 1 and self._Z.min() == 0)
@@ -85,7 +89,7 @@ class GibbsSampling(object):
             self._W_prior = W_prior
         assert (self._W_prior.shape == (1, self._N))
 
-        self._W = self.map_estimate_W()
+        self._W = self.initialize_W()
         assert (self._W.shape == (self._K, self._K))
 
         return
@@ -119,11 +123,11 @@ class GibbsSampling(object):
     todo: 2D-prior on A when initializing A matrix
     """
 
-    def map_estimate_W(self):
-        (mean, std_dev) = self.sufficient_statistics_W()
-        assert (mean.shape == (self._K, self._K))
+    def initialize_W(self):
+        W_new = numpy.random.normal(0, self._sigma_w, (self._K, self._K))
+        assert (W_new.shape == (self._K, self._K))
 
-        return mean
+        return W_new
 
     """
     sample standard deviation of a multivariant Gaussian distribution
@@ -152,9 +156,9 @@ class GibbsSampling(object):
 
         posterior_scale = 1.0 / (sigma_hyper_b + var * 0.5)
         tau = scipy.stats.gamma.rvs(posterior_shape, scale=posterior_scale)
-        sigma_a_new = numpy.sqrt(1.0 / tau)
+        sigma_w_new = numpy.sqrt(1.0 / tau)
 
-        return sigma_a_new
+        return sigma_w_new
 
     """
     sample alpha from conjugate posterior
@@ -216,34 +220,6 @@ class GibbsSampling(object):
             log_likelihood += numpy.log(temp_var)
 
         return log_likelihood
-
-    """
-    compute the M matrix
-    @param Z: default to None, if set, M matrix will be computed according to the passed in Z matrix
-    """
-
-    def compute_M(self, Z=None):
-        if Z == None:
-            Z = self._Z
-
-        K = Z.shape[1]
-        M = numpy.linalg.inv(numpy.dot(Z.transpose(), Z) + (self._sigma_y / self._sigma_w) ** 2 * numpy.eye(K))
-        return M
-
-    """
-    compute the mean and co-variance, i.e., sufficient statistics, of A
-    @param observation_index: a list data type, recorded down the observation indices (column numbers) of A we want to compute
-    """
-
-    def sufficient_statistics_W(self):
-        # compute M = (Z' * Z - (sigma_x^2) / (sigma_a^2) * I)^-1
-        M = self.compute_M()
-        # compute the mean of the matrix A
-        mean_W = numpy.dot(M, numpy.dot(self._Z.transpose(), self._X))
-        # compute the co-variance of the matrix A
-        std_dev_W = numpy.linalg.cholesky(self._sigma_y ** 2 * M).transpose()
-
-        return (mean_W, std_dev_W)
 
     """
     @param directory: the export directory

@@ -245,11 +245,11 @@ class UncollapsedGibbsSampling(GibbsSampling):
     @param A: a 2-D numpy array, integrate A out if it is set to None
     """
     def log_likelihood_X(self, X=None, Z=None, A=None):
-        if A == None:
+        if A is None:
             A = self._A;
-        if Z == None:
+        if Z is None:
             Z = self._Z;
-        if X == None:
+        if X is None:
             X = self._X;
             
         assert(X.shape[0] == Z.shape[0]);

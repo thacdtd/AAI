@@ -287,7 +287,7 @@ class UncollapsedGibbsSampling(GibbsSampling):
     """
     def log_likelihood_model(self):
         #print self.log_likelihood_X(self._X, self._Z, self._A), self.log_likelihood_A(), self.log_likelihood_Z()
-        return self.log_likelihood_X() + self.log_likelihood_A() + self.log_likelihood_Z()
+        return self.log_likelihood_X() # + self.log_likelihood_A() + self.log_likelihood_Z()
 
     """
     sample noise variances, i.e., sigma_x

@@ -185,8 +185,18 @@ class UncollapsedGibbsSampling(GibbsSampling):
     Metropolis-Hasting sample W
     """
     def sample_W(self):
+        #W_old = numpy.copy(self._W)
+        #W_new = numpy.random.normal(numpy.mean(self._W), self._sigma_w, (self._K, self._K))
+        for k in range(self._K):
+            self.sample_Wk(k)
+
+    def sample_Wk(self, k):
         W_old = numpy.copy(self._W)
-        W_new = numpy.random.normal(numpy.mean(self._W), self._sigma_w, (self._K, self._K))
+        W_new = numpy.copy(self._W)
+        for k_prime in range(self._K):
+            Wk_new = numpy.random.normal(W_new[k][k_prime], self._sigma_w)
+            W_new[k][k_prime] = Wk_new
+            W_new[k_prime][k] = Wk_new
 
         # compute the probability of generating new features
         prob_new = numpy.exp(self.log_likelihood_Y(self._Y, self._Z, W_new))
@@ -207,7 +217,7 @@ class UncollapsedGibbsSampling(GibbsSampling):
             return True
 
         return False
-    
+
     """
     remove the empty column in matrix Z and the corresponding feature in A
     """
@@ -344,7 +354,7 @@ if __name__ == '__main__':
                         [0, 1, 1, 0, 1],
                         [1, 1, 0, 1, 1],
                         [1, 0, 1, 1, 1]])
-    """
+
     data = numpy.array([[1, 0, 1, 0, 1, 0, 0, 1, 1],
                         [0, 1, 0, 0, 0, 0, 1, 0, 1],
                         [1, 0, 1, 0, 0, 0, 1, 0, 1],
@@ -354,12 +364,12 @@ if __name__ == '__main__':
                         [0, 1, 1, 0, 1, 0, 1, 0, 0],
                         [1, 0, 0, 1, 0, 1, 0, 1, 1],
                         [1, 1, 1, 0, 1, 0, 0, 1, 1]])
-
+    """
     # initialize the model
     #ibp = UncollapsedGibbsSampling(10)
     ibp = UncollapsedGibbsSampling(alpha_hyper_parameter, sigma_y_hyper_parameter, sigma_w_hyper_parameter, True)
     #ibp = UncollapsedGibbsSampling(alpha_hyper_parameter)
-    #data = ibp.load_kinship()
+    data = ibp.load_kinship()
     ibp._initialize(data, 1.0, 1.0, 0.5, None, None, None)
     #ibp._initialize(data[0:1000, :], 1.0, 1.0, 1.0, None, features[0:1000, :])
     #print ibp._Z, "\n", ibp._A

@@ -1,6 +1,4 @@
 import numpy
-import scipy
-import scipy.stats
 
 
 class CNS:
@@ -118,7 +116,6 @@ class CNS:
         return matrix
 
     def run(self):
-
         data = numpy.array([[1.0, 1.0, 1.0],
                             [2.0, 1.0, 1.0],
                             [2.0, 2.0, 2.0],
@@ -134,7 +131,7 @@ class CNS:
         #intra = self.inter_coupling(1, 1, 2, data)
         #intra = self.cos(1, 2, data)
         intra = self.cos_matrix(data)
-        v = self.convert_range(intra, -1.0, 1.0)
+        v = self.convert_range(intra, 0.0, 1.0)
         print v
         #numpy.savetxt("../out/out_lazega36.csv", intra, delimiter=" ", fmt='%1.2f')
         #print intra

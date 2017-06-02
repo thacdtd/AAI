@@ -371,7 +371,7 @@ if __name__ == '__main__':
     #ibp = UncollapsedGibbsSampling(10)
     ibp = UncollapsedGibbsSampling(alpha_hyper_parameter, sigma_y_hyper_parameter, sigma_w_hyper_parameter, True)
     #ibp = UncollapsedGibbsSampling(alpha_hyper_parameter)
-    data = ibp.load_kinship()
+    # data = ibp.load_kinship()
     ibp._initialize(data, 1.0, 1.0, 0.5, None, None, None)
     #ibp._initialize(data[0:1000, :], 1.0, 1.0, 1.0, None, features[0:1000, :])
     #print ibp._Z, "\n", ibp._A

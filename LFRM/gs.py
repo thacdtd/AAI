@@ -66,11 +66,6 @@ class GibbsSampling(object):
         self._Y = data
         (self._N, self._N) = self._Y.shape
 
-        print "==========================="
-        print data
-
-        print self._Y
-
         if initial_Z is None:
             # initialize Z from IBP(alpha)
             self._Z = self.initialize_Z()

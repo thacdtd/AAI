@@ -260,7 +260,7 @@ class UncollapsedGibbsSampling(GibbsSampling):
         log_likelihood = 1.0
 
         for i in range(N):
-            for j in range(N):
+            for j in range(i, N):
                 #temp = 0
                 #for k in range(K):
                 #    for k_prime in range(K):

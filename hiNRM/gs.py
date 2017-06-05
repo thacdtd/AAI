@@ -94,8 +94,8 @@ class GibbsSampling(object):
             self._W_prior = W_prior
         assert (self._W_prior.shape == (1, self._N))
 
-        self._W = self.initialize_W()
-        assert (self._W.shape == (self._K, self._K))
+        #self._W = self.initialize_W()
+        #assert (self._W.shape == (self._K, self._K))
 
         return
 

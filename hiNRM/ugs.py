@@ -52,10 +52,11 @@ class UncollapsedGibbsSampling(GibbsSampling):
             for (object_counter, object_index) in enumerate(order):
                 # sample Z_n
                 singleton_features = self.sample_Zn(object_index)
-                
+                self._W = self.sample_W(self._K)
                 if self._metropolis_hastings_k_new:
                     # sample K_new using metropolis hasting
                     self.metropolis_hastings_K_new(object_index)
+                    self._W = self.sample_W(self._K)
                 
             # regularize matrices
             self.regularize_matrices()    
@@ -121,10 +122,10 @@ class UncollapsedGibbsSampling(GibbsSampling):
                 Znk_is_0 = prob_z0 / (prob_z0 + prob_z1)
                 if random.random() < Znk_is_0:
                     self._Z[object_index, feature_index] = 0
-                    self._W = numpy.copy(w0)
+                    #self._W = numpy.copy(w0)
                 else:
                     self._Z[object_index, feature_index] = 1
-                    self._W = numpy.copy(w1)
+                    #self._W = numpy.copy(w1)
                     
         return singleton_features
 

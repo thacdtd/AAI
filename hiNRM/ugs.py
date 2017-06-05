@@ -30,7 +30,7 @@ class UncollapsedGibbsSampling(GibbsSampling):
         if initial_W is not None:
             # this will replace the A matrix generated in the super class. 
             self._W = initial_W
-        self._W = self.sample_W(self._K)
+        self._W = self.sample_W(self._K, self._Z)
         assert(self._W.shape == (self._K, self._K))
     
     """
@@ -106,14 +106,14 @@ class UncollapsedGibbsSampling(GibbsSampling):
 
                 # compute the log likelihood when Znk=0
                 self._Z[object_index, feature_index] = 0
-                w0 = self.sample_W(self._Z.shape[1])
+                w0 = self.sample_W(self._Z.shape[1], self._Z)
                 prob_z0 = self.log_likelihood_Y(None, self._Z, w0) #(self._Y[[object_index], :], self._Z[[object_index], :])
                 prob_z0 += log_prob_z0[feature_index]
                 prob_z0 = numpy.exp(prob_z0)
 
                 # compute the log likelihood when Znk=1
                 self._Z[object_index, feature_index] = 1
-                w1 = self.sample_W(self._Z.shape[1])
+                w1 = self.sample_W(self._Z.shape[1], self._Z)
 
                 prob_z1 = self.log_likelihood_Y(None, self._Z, w1) #(self._Y[[object_index], :], self._Z[[object_index], :])
                 prob_z1 += log_prob_z1[feature_index]
@@ -170,7 +170,7 @@ class UncollapsedGibbsSampling(GibbsSampling):
         for i in range(1, K_temp):
             Z_new[object_index][self._K + i] = 1
 
-        W_new = self.sample_W(K_new)
+        W_new = self.sample_W(K_new, Z_new)
 
         # compute the probability of generating new features
         prob_new = numpy.exp(self.log_likelihood_Y(self._Y, Z_new, W_new))
@@ -196,23 +196,23 @@ class UncollapsedGibbsSampling(GibbsSampling):
     """
     Metropolis-Hasting sample W
     """
-    def sample_W(self, K):
+    def sample_W(self, K, Z):
         #W_old = numpy.copy(self._W)
         #W_new = numpy.random.normal(numpy.mean(self._W), self._sigma_w, (self._K, self._K))
         W_new = numpy.zeros((K,K))
-        for k in range(K-1):
-            for k_prime in range(K-1):
-                W_new[k][k_prime] = self.cal_w_k_k_prime(k, k_prime)
+        for k in range(K):
+            for k_prime in range(K):
+                W_new[k][k_prime] = self.cal_w_k_k_prime(k, k_prime, Z)
         amax = numpy.amax(W_new)
         amin = numpy.amin(W_new)
         W_new = self.convert_range(W_new, (amin-amax)/2, (amax-amin)/2)
         return  W_new
 
-    def cal_w_k_k_prime(self, k, k_prime):
+    def cal_w_k_k_prime(self, k, k_prime, Z):
         w_k_k_prime = 0
         for i in range(self._N):
             for j in range(i, self._N):
-                if (self._Y[i][j] == 1) and (self._Z[i][k] == 1) and (self._Z[j][k_prime] == 1):
+                if (self._Y[i][j] == 1) and (Z[i][k] == 1) and (Z[j][k_prime] == 1):
                     w_k_k_prime += 1
         return w_k_k_prime
 

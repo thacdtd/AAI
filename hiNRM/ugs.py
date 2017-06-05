@@ -196,12 +196,12 @@ class UncollapsedGibbsSampling(GibbsSampling):
     """
     Metropolis-Hasting sample W
     """
-    def sample_W(self, k):
+    def sample_W(self, K):
         #W_old = numpy.copy(self._W)
         #W_new = numpy.random.normal(numpy.mean(self._W), self._sigma_w, (self._K, self._K))
-        W_new = numpy.zeros((k,k))
-        for k in range(self._K):
-            for k_prime in range(self._K):
+        W_new = numpy.zeros((K,K))
+        for k in range(K-1):
+            for k_prime in range(K-1):
                 W_new[k][k_prime] = self.cal_w_k_k_prime(k, k_prime)
         amax = numpy.amax(W_new)
         amin = numpy.amin(W_new)
@@ -214,7 +214,7 @@ class UncollapsedGibbsSampling(GibbsSampling):
             for j in range(i, self._N):
                 if (self._Y[i][j] == 1) and (self._Z[i][k] == 1) and (self._Z[j][k_prime] == 1):
                     w_k_k_prime += 1
-        return w_k_k_prime/2
+        return w_k_k_prime
 
     """
     remove the empty column in matrix Z and the corresponding feature in A

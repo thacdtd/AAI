@@ -261,10 +261,11 @@ class UncollapsedGibbsSampling(GibbsSampling):
 
         for i in range(N):
             for j in range(N):
-                temp = 0
-                for k in range(K):
-                    for k_prime in range(K):
-                        temp += Z[i][k] * W[k][k_prime] * Z[j][k_prime]
+                #temp = 0
+                #for k in range(K):
+                #    for k_prime in range(K):
+                #        temp += Z[i][k] * W[k][k_prime] * Z[j][k_prime]
+                temp = numpy.dot(numpy.dot(Z[i, :], W), Z[j, :].transpose())
                 if Y[i][j] == 1:
                     log_likelihood *= self.sigmoid(temp)
                 else:
@@ -375,7 +376,7 @@ if __name__ == '__main__':
     ibp._initialize(data, 1.0, 1.0, 0.5, None, None, None)
     #ibp._initialize(data[0:1000, :], 1.0, 1.0, 1.0, None, features[0:1000, :])
     #print ibp._Z, "\n", ibp._A
-    ibp.sample(300)
+    ibp.sample(1000)
     
     print ibp._Z.sum(axis=0)
     print ibp.log_likelihood_model()

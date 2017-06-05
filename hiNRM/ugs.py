@@ -121,8 +121,10 @@ class UncollapsedGibbsSampling(GibbsSampling):
                 Znk_is_0 = prob_z0 / (prob_z0 + prob_z1)
                 if random.random() < Znk_is_0:
                     self._Z[object_index, feature_index] = 0
+                    self._W = numpy.copy(w0)
                 else:
                     self._Z[object_index, feature_index] = 1
+                    self._W = numpy.copy(w1)
                     
         return singleton_features
 

@@ -77,7 +77,7 @@ class GibbsSampling(object):
         print self._Z
 
         # make sure Z matrix is a binary matrix
-        assert (self._Z.dtype == numpy.int)
+        # assert (self._Z.dtype == numpy.int)
         assert (self._Z.max() == 1 and self._Z.min() == 0)
 
         # record down the number of features
@@ -114,7 +114,7 @@ class GibbsSampling(object):
             Z = numpy.vstack((Z, sample_dish))
 
         assert (Z.shape[0] == self._N)
-        Z = Z.astype(numpy.int)
+        Z = Z.astype(numpy.float)
 
         return Z
 

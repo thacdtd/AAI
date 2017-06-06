@@ -9,7 +9,8 @@ import numpy
 import scipy
 import random
 import scipy.stats
-from LFRM.gs import GibbsSampling
+from sklearn import preprocessing
+from hiNRM.gs import GibbsSampling
 
 
 # We will be taking log(0) = -Inf, so turn off this warning
@@ -91,7 +92,7 @@ class UncollapsedGibbsSampling(GibbsSampling):
         new_m = (m - self._Z[object_index, :]).astype(numpy.float)
         
         # compute the log probability of p(Znk=0 | Z_nk) and p(Znk=1 | Z_nk)
-        log_prob_z1 = numpy.log(new_m / self._N)
+        log_prob_z1 = numpy.log(1.0 * new_m / self._N)
         log_prob_z0 = numpy.log(1.0 - new_m / self._N)
         
         # find all singleton features possessed by current object
@@ -201,11 +202,17 @@ class UncollapsedGibbsSampling(GibbsSampling):
         #W_new = numpy.random.normal(numpy.mean(self._W), self._sigma_w, (self._K, self._K))
         W_new = numpy.zeros((K,K))
         for k in range(K):
-            for k_prime in range(K):
-                W_new[k][k_prime] = self.cal_w_k_k_prime(k, k_prime, Z)
+            for k_prime in range(k, K):
+                W_new[k][k_prime] = 1.0 * self.cal_w_k_k_prime(k, k_prime, Z) / min(Z[:, k].sum(axis=0), Z[:, k_prime].sum(axis=0))
+                W_new[k_prime][k] = 1.0 * self.cal_w_k_k_prime(k, k_prime, Z) / min(Z[:, k].sum(axis=0),
+                                                                                    Z[:, k_prime].sum(axis=0))
         amax = numpy.amax(W_new)
         amin = numpy.amin(W_new)
-        W_new = self.convert_range(W_new, (amin-amax)/2, (amax-amin)/2)
+        #print W_new
+        W_new = self.convert_range(W_new, (amin-amax), (amax-amin))
+        #W_new = preprocessing.normalize(W_new, norm='l2')
+        #W_normed = (W_new - W_new.min(0)) / W_new.ptp(0)
+        #print W_new
         return  W_new
 
     def cal_w_k_k_prime(self, k, k_prime, Z):
@@ -229,11 +236,14 @@ class UncollapsedGibbsSampling(GibbsSampling):
         #print self._K, indices, [k for k in range(self._K) if k not in indices]
 
         self._Z = self._Z[:, [k for k in range(self._K) if k not in indices[0]]]
-        self._W = self._W[[k for k in range(self._K) if k not in indices[0]], :]
+        #self._W = self._W[[k for k in range(self._K) if k not in indices[0]], :]
 
-        self._W = self._W[:, [k for k in range(self._K) if k not in indices[0]]]
-        
+        #self._W = self._W[:, [k for k in range(self._K) if k not in indices[0]]]
+
+
         self._K = self._Z.shape[1]
+        self._W = self.sample_W(self._K, self._Z)
+
         assert(self._Z.shape == (self._N, self._K))
         assert(self._W.shape == (self._K, self._K))
 
@@ -267,7 +277,7 @@ class UncollapsedGibbsSampling(GibbsSampling):
                 if Y[i][j] == 1:
                     log_likelihood *= self.sigmoid(temp)
                 else:
-                    log_likelihood *= 1 - self.sigmoid(temp)
+                    log_likelihood *= (1.0 - self.sigmoid(temp))
 
         return numpy.log(log_likelihood)
     
@@ -366,7 +376,7 @@ if __name__ == '__main__':
                         [0, 1, 1, 0, 1],
                         [1, 1, 0, 1, 1],
                         [1, 0, 1, 1, 1]])
-    """
+
     data = numpy.array([[1, 0, 1, 0, 1, 0, 0, 1, 1],
                         [0, 1, 0, 0, 0, 0, 1, 0, 1],
                         [1, 0, 1, 0, 0, 0, 1, 0, 1],
@@ -376,16 +386,17 @@ if __name__ == '__main__':
                         [0, 1, 1, 0, 1, 0, 1, 0, 0],
                         [1, 0, 0, 1, 0, 1, 0, 1, 1],
                         [1, 1, 1, 0, 1, 0, 0, 1, 1]])
-
+    """
     # initialize the model
     #ibp = UncollapsedGibbsSampling(10)
     ibp = UncollapsedGibbsSampling(alpha_hyper_parameter, sigma_y_hyper_parameter, sigma_w_hyper_parameter, True)
     #ibp = UncollapsedGibbsSampling(alpha_hyper_parameter)
-    data = ibp.load_kinship()
+    #data = ibp.load_kinship()
+    data = ibp.load_lazega()
     ibp._initialize(data, 1.0, 1.0, 0.5, None, None, None)
     #ibp._initialize(data[0:1000, :], 1.0, 1.0, 1.0, None, features[0:1000, :])
     #print ibp._Z, "\n", ibp._A
-    ibp.sample(500)
+    ibp.sample(1000)
     
     print ibp._Z.sum(axis=0)
     print ibp.log_likelihood_model()

@@ -73,6 +73,7 @@ class UncollapsedGibbsSampling(GibbsSampling):
                 
             print("iteration: %i\tK: %i\tlikelihood: %f" % (iter, self._K, self.log_likelihood_model()))
             # print("alpha: %f\tsigma_a: %f\tsigma_x: %f" % (self._alpha, self._sigma_w, self._sigma_y))
+
             print self._Z.sum(axis=0)
             if (iter + 1) % self._snapshot_interval == 0:
                 self.export_snapshot(directory, iter + 1)
@@ -87,7 +88,7 @@ class UncollapsedGibbsSampling(GibbsSampling):
         m = self._Z.sum(axis=0)
         
         # remove this data point from m vector
-        new_m = (m - self._Z[object_index, :]).astype(numpy.float)
+        new_m = (m - self._Z[object_index, :]) #.astype(numpy.float)
         
         # compute the log probability of p(Znk=0 | Z_nk) and p(Znk=1 | Z_nk)
         log_prob_z1 = numpy.log(new_m / self._N)
@@ -119,7 +120,6 @@ class UncollapsedGibbsSampling(GibbsSampling):
                     self._Z[object_index, feature_index] = 0
                 else:
                     self._Z[object_index, feature_index] = 1
-                    
         return singleton_features
 
     """
@@ -144,7 +144,8 @@ class UncollapsedGibbsSampling(GibbsSampling):
         W_new = numpy.hstack((W_new, W_temp))
         # generate new z matrix row
         #print K_temp, object_index, [k for k in xrange(self._K) if k not in singleton_features], self._Z[[object_index], [k for k in xrange(self._K) if k not in singleton_features]].shape, numpy.ones((len(object_index), K_temp)).shape
-        Z_new = numpy.hstack((self._Z, numpy.zeros((self._N, K_temp))))
+        temp = numpy.zeros((self._N, K_temp)).astype(float)
+        Z_new = numpy.hstack((self._Z, temp))
 
         K_new = self._K + K_temp
 
@@ -178,7 +179,6 @@ class UncollapsedGibbsSampling(GibbsSampling):
             self._Z = numpy.copy(Z_new)
             self._K = K_new
             return True
-
         return False
 
     """
@@ -269,7 +269,7 @@ class UncollapsedGibbsSampling(GibbsSampling):
                 if Y[i][j] == 1:
                     log_likelihood *= self.sigmoid(temp)
                 else:
-                    log_likelihood *= 1 - self.sigmoid(temp)
+                    log_likelihood *= (1 - self.sigmoid(temp))
         return numpy.log(log_likelihood)
     
     """
@@ -357,7 +357,7 @@ if __name__ == '__main__':
                         [0, 1, 1, 0, 1],
                         [1, 1, 0, 1, 1],
                         [1, 0, 1, 1, 1]])
-    """
+
     data = numpy.array([[1, 0, 1, 0, 1, 0, 0, 1, 1],
                         [0, 1, 0, 0, 0, 0, 1, 0, 1],
                         [1, 0, 1, 0, 0, 0, 1, 0, 1],
@@ -367,12 +367,13 @@ if __name__ == '__main__':
                         [0, 1, 1, 0, 1, 0, 1, 0, 0],
                         [1, 0, 0, 1, 0, 1, 0, 1, 1],
                         [1, 1, 1, 0, 1, 0, 0, 1, 1]])
-
+    """
     # initialize the model
     #ibp = UncollapsedGibbsSampling(10)
     ibp = UncollapsedGibbsSampling(alpha_hyper_parameter, sigma_y_hyper_parameter, sigma_w_hyper_parameter, True)
     #ibp = UncollapsedGibbsSampling(alpha_hyper_parameter)
-    data = ibp.load_kinship()
+    #data = ibp.load_kinship()
+    data = ibp.load_lazega()
     ibp._initialize(data, 1.0, 1.0, 0.5, None, None, None)
     #ibp._initialize(data[0:1000, :], 1.0, 1.0, 1.0, None, features[0:1000, :])
     #print ibp._Z, "\n", ibp._A

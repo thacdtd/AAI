@@ -266,10 +266,11 @@ class UncollapsedGibbsSampling(GibbsSampling):
                 #    for k_prime in range(K):
                 #        temp += Z[i][k] * W[k][k_prime] * Z[j][k_prime]
                 temp = numpy.dot(numpy.dot(Z[i, :], W), Z[j, :].transpose())
+                sig_temp = self.sigmoid(temp)
                 if Y[i][j] == 1:
-                    log_likelihood *= self.sigmoid(temp)
+                    log_likelihood *= sig_temp
                 else:
-                    log_likelihood *= (1 - self.sigmoid(temp))
+                    log_likelihood *= (1 - sig_temp)
         return numpy.log(log_likelihood)
     
     """
@@ -308,8 +309,18 @@ class UncollapsedGibbsSampling(GibbsSampling):
         # given input value
         return 1.0 / (1 + numpy.exp(-x))
 
-    def load_lazega(self):
+    def load_lazega_friend(self):
         f = open('../data/LazegaLawyers/ELfriend36.dat')
+        data = numpy.loadtxt(f)
+        return data.astype(numpy.int)
+
+    def load_lazega_adv(self):
+        f = open('../data/LazegaLawyers/ELadv36.dat')
+        data = numpy.loadtxt(f)
+        return data.astype(numpy.int)
+
+    def load_lazega_work(self):
+        f = open('../data/LazegaLawyers/ELwork36.dat')
         data = numpy.loadtxt(f)
         return data.astype(numpy.int)
 
@@ -373,7 +384,7 @@ if __name__ == '__main__':
     ibp = UncollapsedGibbsSampling(alpha_hyper_parameter, sigma_y_hyper_parameter, sigma_w_hyper_parameter, True)
     #ibp = UncollapsedGibbsSampling(alpha_hyper_parameter)
     #data = ibp.load_kinship()
-    data = ibp.load_lazega()
+    data = ibp.load_lazega_friend()
     ibp._initialize(data, 1.0, 1.0, 0.5, None, None, None)
     #ibp._initialize(data[0:1000, :], 1.0, 1.0, 1.0, None, features[0:1000, :])
     #print ibp._Z, "\n", ibp._A

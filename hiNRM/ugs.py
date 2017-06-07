@@ -203,8 +203,12 @@ class UncollapsedGibbsSampling(GibbsSampling):
         W_new = numpy.zeros((K,K))
         for k in range(K):
             for k_prime in range(k, K):
-                W_new[k][k_prime] = 1.0 * self.cal_w_k_k_prime(k, k_prime, Z) / min(Z[:, k].sum(axis=0), Z[:, k_prime].sum(axis=0))
-                W_new[k_prime][k] = 1.0 * self.cal_w_k_k_prime(k, k_prime, Z) / min(Z[:, k].sum(axis=0),
+                if k == k_prime:
+                    W_new[k][k_prime] = 1.0 * self.cal_w_k_k_prime(k, k_prime, Z) / min(Z[:, k].sum(axis=0), Z[:, k_prime].sum(axis=0)) + 0.5
+                    W_new[k_prime][k] = 1.0 * self.cal_w_k_k_prime(k, k_prime, Z) / min(Z[:, k].sum(axis=0), Z[:, k_prime].sum(axis=0)) + 0.5
+                else:
+                    W_new[k][k_prime] = 1.0 * self.cal_w_k_k_prime(k, k_prime, Z) / min(Z[:, k].sum(axis=0), Z[:, k_prime].sum(axis=0))
+                    W_new[k_prime][k] = 1.0 * self.cal_w_k_k_prime(k, k_prime, Z) / min(Z[:, k].sum(axis=0),
                                                                                     Z[:, k_prime].sum(axis=0))
         amax = numpy.amax(W_new)
         amin = numpy.amin(W_new)
@@ -327,8 +331,18 @@ class UncollapsedGibbsSampling(GibbsSampling):
                     matrix[i][j] = ((matrix[i][j] - old_min) / (old_max - old_min)) * (new_max - new_min) + new_min
         return matrix
 
-    def load_lazega(self):
+    def load_lazega_friend(self):
         f = open('../data/LazegaLawyers/ELfriend36.dat')
+        data = numpy.loadtxt(f)
+        return data.astype(numpy.int)
+
+    def load_lazega_adv(self):
+        f = open('../data/LazegaLawyers/ELadv36.dat')
+        data = numpy.loadtxt(f)
+        return data.astype(numpy.int)
+
+    def load_lazega_work(self):
+        f = open('../data/LazegaLawyers/ELwork36.dat')
         data = numpy.loadtxt(f)
         return data.astype(numpy.int)
 
@@ -392,7 +406,7 @@ if __name__ == '__main__':
     ibp = UncollapsedGibbsSampling(alpha_hyper_parameter, sigma_y_hyper_parameter, sigma_w_hyper_parameter, True)
     #ibp = UncollapsedGibbsSampling(alpha_hyper_parameter)
     #data = ibp.load_kinship()
-    data = ibp.load_lazega()
+    data = ibp.load_lazega_friend()
     ibp._initialize(data, 1.0, 1.0, 0.5, None, None, None)
     #ibp._initialize(data[0:1000, :], 1.0, 1.0, 1.0, None, features[0:1000, :])
     #print ibp._Z, "\n", ibp._A

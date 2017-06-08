@@ -204,12 +204,12 @@ class UncollapsedGibbsSampling(GibbsSampling):
         for k in range(K):
             for k_prime in range(k, K):
                 if k == k_prime:
-                    W_new[k][k_prime] = 1.0 * self.cal_w_k_k_prime(k, k_prime, Z) / min(Z[:, k].sum(axis=0), Z[:, k_prime].sum(axis=0)) + 0.5
-                    W_new[k_prime][k] = 1.0 * self.cal_w_k_k_prime(k, k_prime, Z) / min(Z[:, k].sum(axis=0), Z[:, k_prime].sum(axis=0)) + 0.5
+                    W_new[k][k_prime] = 1.0 * self.cal_w_k_k_prime(k, k_prime, Z) / Z.shape[0]#min(Z[:, k].sum(axis=0), Z[:, k_prime].sum(axis=0)) + 0.5
+                    W_new[k_prime][k] = 1.0 * self.cal_w_k_k_prime(k, k_prime, Z) / Z.shape[0]#min(Z[:, k].sum(axis=0), Z[:, k_prime].sum(axis=0)) + 0.5
                 else:
-                    W_new[k][k_prime] = 1.0 * self.cal_w_k_k_prime(k, k_prime, Z) / min(Z[:, k].sum(axis=0), Z[:, k_prime].sum(axis=0))
-                    W_new[k_prime][k] = 1.0 * self.cal_w_k_k_prime(k, k_prime, Z) / min(Z[:, k].sum(axis=0),
-                                                                                    Z[:, k_prime].sum(axis=0))
+                    W_new[k][k_prime] = 1.0 * self.cal_w_k_k_prime(k, k_prime, Z) / Z.shape[0]#min(Z[:, k].sum(axis=0), Z[:, k_prime].sum(axis=0))
+                    W_new[k_prime][k] = 1.0 * self.cal_w_k_k_prime(k, k_prime, Z) / Z.shape[0]#min(Z[:, k].sum(axis=0),
+                                                                                    #Z[:, k_prime].sum(axis=0))
         amax = numpy.amax(W_new)
         amin = numpy.amin(W_new)
         #print W_new

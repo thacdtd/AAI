@@ -203,17 +203,17 @@ class UncollapsedGibbsSampling(GibbsSampling):
         W_new = numpy.zeros((K,K))
         for k in range(K):
             for k_prime in range(k, K):
+                a = min(Z[:, k].sum(axis=0), Z[:, k_prime].sum(axis=0))
                 if k == k_prime:
-                    W_new[k][k_prime] = 1.0 * self.cal_w_k_k_prime(k, k_prime, Z) / Z.shape[0]#min(Z[:, k].sum(axis=0), Z[:, k_prime].sum(axis=0)) + 0.5
-                    W_new[k_prime][k] = 1.0 * self.cal_w_k_k_prime(k, k_prime, Z) / Z.shape[0]#min(Z[:, k].sum(axis=0), Z[:, k_prime].sum(axis=0)) + 0.5
+                    W_new[k][k_prime] = 1.0 * self.cal_w_k_k_prime(k, k_prime, Z)
+                    W_new[k_prime][k] = 1.0 * self.cal_w_k_k_prime(k, k_prime, Z)
                 else:
-                    W_new[k][k_prime] = 1.0 * self.cal_w_k_k_prime(k, k_prime, Z) / Z.shape[0]#min(Z[:, k].sum(axis=0), Z[:, k_prime].sum(axis=0))
-                    W_new[k_prime][k] = 1.0 * self.cal_w_k_k_prime(k, k_prime, Z) / Z.shape[0]#min(Z[:, k].sum(axis=0),
-                                                                                    #Z[:, k_prime].sum(axis=0))
+                    W_new[k][k_prime] = 1.0 * self.cal_w_k_k_prime(k, k_prime, Z)
+                    W_new[k_prime][k] = 1.0 * self.cal_w_k_k_prime(k, k_prime, Z)
         amax = numpy.amax(W_new)
         amin = numpy.amin(W_new)
         #print W_new
-        W_new = self.convert_range(W_new, (amin-amax), (amax-amin))
+        #W_new = self.convert_range(W_new, (amin-amax), (amax-amin))
         #W_new = preprocessing.normalize(W_new, norm='l2')
         #W_normed = (W_new - W_new.min(0)) / W_new.ptp(0)
         #print W_new
@@ -221,11 +221,16 @@ class UncollapsedGibbsSampling(GibbsSampling):
 
     def cal_w_k_k_prime(self, k, k_prime, Z):
         w_k_k_prime = 0
+        w_k_k_prime_0 = 0
         for i in range(self._N):
-            for j in range(i, self._N):
+            for j in range(self._N):
                 if (self._Y[i][j] == 1) and (Z[i][k] == 1) and (Z[j][k_prime] == 1):
                     w_k_k_prime += 1
-        return w_k_k_prime
+                if (self._Y[i][j] == 0) and (Z[i][k] == 1) and (Z[j][k_prime] == 1):
+                    w_k_k_prime_0 += 1
+        sample =  numpy.random.beta(w_k_k_prime + 1.0, w_k_k_prime_0 + 1.0, 1)[0]
+        logit_s = self.logit(sample)
+        return logit_s
 
     """
     remove the empty column in matrix Z and the corresponding feature in A
@@ -320,6 +325,9 @@ class UncollapsedGibbsSampling(GibbsSampling):
         # compute and return the sigmoid activation value for a
         # given input value
         return 1.0 / (1 + numpy.exp(-x))
+
+    def logit(self, p):
+        return numpy.log(p / (1-p))
 
     def convert_range(self, matrix, new_min, new_max):
         old_min = numpy.amin(matrix)

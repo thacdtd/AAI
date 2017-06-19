@@ -107,14 +107,14 @@ class UncollapsedGibbsSampling(GibbsSampling):
 
                 # compute the log likelihood when Znk=0
                 self._Z[object_index, feature_index] = 0
-                w0 = self.sample_W(self._Z.shape[1], self._Z)
+                w0 = self.sample_W(self._Z)
                 prob_z0 = self.log_likelihood_Y(None, self._Z, w0) #(self._Y[[object_index], :], self._Z[[object_index], :])
                 prob_z0 += log_prob_z0[feature_index]
                 prob_z0 = numpy.exp(prob_z0)
 
                 # compute the log likelihood when Znk=1
                 self._Z[object_index, feature_index] = 1
-                w1 = self.sample_W(self._Z.shape[1], self._Z)
+                w1 = self.sample_W(self._Z)
 
                 prob_z1 = self.log_likelihood_Y(None, self._Z, w1) #(self._Y[[object_index], :], self._Z[[object_index], :])
                 prob_z1 += log_prob_z1[feature_index]
@@ -171,7 +171,7 @@ class UncollapsedGibbsSampling(GibbsSampling):
         for i in range(1, K_temp):
             Z_new[object_index][self._K + i] = 1
 
-        W_new = self.sample_W(K_new, Z_new)
+        W_new = self.sample_W(Z_new)
 
         # compute the probability of generating new features
         prob_new = numpy.exp(self.log_likelihood_Y(self._Y, Z_new, W_new))
@@ -197,12 +197,15 @@ class UncollapsedGibbsSampling(GibbsSampling):
     """
     Metropolis-Hasting sample W
     """
-    def sample_W(self, K, Z):
+    def sampleMH_W(self, Z):
+        print "MH W"
+
+    def sample_W(self, Z):
         #W_old = numpy.copy(self._W)
         #W_new = numpy.random.normal(numpy.mean(self._W), self._sigma_w, (self._K, self._K))
-        W_new = numpy.zeros((K,K))
-        for k in range(K):
-            for k_prime in range(k, K):
+        W_new = numpy.zeros((Z.shape[1], Z.shape[1]))
+        for k in range(Z.shape[1]):
+            for k_prime in range(k, Z.shape[1]):
                 a = min(Z[:, k].sum(axis=0), Z[:, k_prime].sum(axis=0))
                 if k == k_prime:
                     W_new[k][k_prime] = 1.0 * self.cal_w_k_k_prime(k, k_prime, Z)
@@ -251,7 +254,7 @@ class UncollapsedGibbsSampling(GibbsSampling):
 
 
         self._K = self._Z.shape[1]
-        self._W = self.sample_W(self._K, self._Z)
+        self._W = self.sample_W(self._Z)
 
         assert(self._Z.shape == (self._N, self._K))
         assert(self._W.shape == (self._K, self._K))

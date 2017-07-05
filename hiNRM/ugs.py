@@ -31,7 +31,7 @@ class UncollapsedGibbsSampling(GibbsSampling):
         if initial_W is not None:
             # this will replace the A matrix generated in the super class. 
             self._W = initial_W
-        self._W = self.sample_W(self._K, self._Z)
+        self._W = self.sample_W(self._Z)
         assert(self._W.shape == (self._K, self._K))
     
     """

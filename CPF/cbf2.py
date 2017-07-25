@@ -31,6 +31,12 @@ class CPF(object):
     def init_phi(self):
         return np.ones((self.dim_U, self.dim_I, self.K))
 
+    def sum_phi_k(self, u, i):
+        sum_phi_k = 0
+        for k in range(0, self.K):
+            sum_phi_k += self.phi[u][i][k]
+        return sum_phi_k
+
     def update_phi_k(self, gamma_shp_k, gamma_rte_k, lambda_shp_k, lambda_rte_k):
         return np.exp(special.psi(gamma_shp_k) - np.log(gamma_rte_k) + special.psi(lambda_shp_k) - np.log(lambda_rte_k))
 
@@ -39,7 +45,7 @@ class CPF(object):
             for i in range(0, self.dim_I):
                 for k in range(0, self.K):
                     self.phi[u][i][k] = self.update_phi_k(self.gamma_shp[u][k], self.gamma_rte[u][k],
-                                                          self.lambda_shp[i][k], self.lambda_rte[i][k])
+                                        self.lambda_shp[i][k], self.lambda_rte[i][k]) / self.sum_phi_k(u, i)
                     #self.phi[u][i][k] = np.random.exponential(temp)
 
     def update_gamma_u_k(self, u, k):
@@ -81,6 +87,7 @@ class CPF(object):
             for k in range(0,self.K):
                 self.lambda_shp[i][k], self.lambda_rte[i][k] = self.update_lambda_i_k(i, k)
             self.tau_rte[i] = self.update_tau_rte_i(i)
+
 
     def fit(self, max_iter=100):
         for iter in range(0, max_iter):
@@ -130,6 +137,6 @@ if __name__ == "__main__":
         for i in range(0, cpf.dim_I):
             item[i][k] = np.random.gamma(cpf.lambda_shp[i][k], 1/cpf.lambda_rte[i][k])
 
-    predict = np.dot(user, item.T) # np.random.poisson(np.dot(user, item.T))
+    predict = np.random.poisson(np.dot(user, item.T))
     print "============================"
     print predict

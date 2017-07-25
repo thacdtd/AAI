@@ -89,7 +89,7 @@ class CPF(object):
             self.tau_rte[i] = self.update_tau_rte_i(i)
 
 
-    def fit(self, max_iter=100):
+    def fit(self, max_iter=10000):
         for iter in range(0, max_iter):
             # update multinominal
             self.update_phi()
@@ -107,8 +107,8 @@ if __name__ == "__main__":
          [5,3,0,1],
          [4,0,0,1],
          [1,1,0,5],
-         [1,0,0,4],
-         [1,0,5,1],
+         [1,0,5,4],
+         [5,0,5,1],
          [1,2,1,5]
         ]
 
@@ -133,9 +133,9 @@ if __name__ == "__main__":
     item = np.zeros((cpf.dim_I, cpf.K))
     for k in range(0, cpf.K):
         for u in range(0, cpf.dim_U):
-            user[u][k] = np.random.gamma(cpf.gamma_shp[u][k], 1/cpf.gamma_rte[u][k])
+            user[u][k] = np.random.gamma(cpf.gamma_shp[u][k], 1./cpf.gamma_rte[u][k])
         for i in range(0, cpf.dim_I):
-            item[i][k] = np.random.gamma(cpf.lambda_shp[i][k], 1/cpf.lambda_rte[i][k])
+            item[i][k] = np.random.gamma(cpf.lambda_shp[i][k], 1./cpf.lambda_rte[i][k])
 
     predict = np.random.poisson(np.dot(user, item.T))
     print "============================"

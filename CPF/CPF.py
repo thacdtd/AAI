@@ -29,8 +29,7 @@ class PoissonMF(BaseEstimator, TransformerMixin):
             Maximal number of iterations to perform
 
         tol : float
-            The threshold on the increase of the objective to stop the
-            iteration
+            The threshold on the increase of the objective to stop the iteration
 
         smoothness : int
             Smoothness on the initialization variational parameters
@@ -65,12 +64,10 @@ class PoissonMF(BaseEstimator, TransformerMixin):
 
     def _init_components(self, n_feats):
         # variational parameters for beta
-        self.gamma_b = self.smoothness \
-            * np.random.gamma(self.smoothness, 1. / self.smoothness,
-                              size=(self.n_components, n_feats))
-        self.rho_b = self.smoothness \
-            * np.random.gamma(self.smoothness, 1. / self.smoothness,
-                              size=(self.n_components, n_feats))
+        self.gamma_b = self.smoothness * np.random.gamma(self.smoothness, 1. / self.smoothness,
+                                                         size=(self.n_components, n_feats))
+        self.rho_b = self.smoothness * np.random.gamma(self.smoothness, 1. / self.smoothness,
+                                                       size=(self.n_components, n_feats))
         self.Eb, self.Elogb = _compute_expectations(self.gamma_b, self.rho_b)
 
     def set_components(self, shape, rate):
@@ -96,12 +93,10 @@ class PoissonMF(BaseEstimator, TransformerMixin):
 
     def _init_weights(self, n_samples):
         # variational parameters for theta
-        self.gamma_t = self.smoothness \
-            * np.random.gamma(self.smoothness, 1. / self.smoothness,
-                              size=(n_samples, self.n_components))
-        self.rho_t = self.smoothness \
-            * np.random.gamma(self.smoothness, 1. / self.smoothness,
-                              size=(n_samples, self.n_components))
+        self.gamma_t = self.smoothness * np.random.gamma(self.smoothness, 1. / self.smoothness,
+                                                         size=(n_samples, self.n_components))
+        self.rho_t = self.smoothness * np.random.gamma(self.smoothness, 1. / self.smoothness,
+                                                       size=(n_samples, self.n_components))
         self.Et, self.Elogt = _compute_expectations(self.gamma_t, self.rho_t)
         self.c = 1. / np.mean(self.Et)
 
@@ -132,8 +127,7 @@ class PoissonMF(BaseEstimator, TransformerMixin):
         X : array-like, shape (n_samples, n_feats)
 
         attr: string
-            The name of attribute, default 'Eb'. Can be changed to Elogb to
-            obtain E_q[log beta] as transformed data.
+            The name of attribute, default 'Eb'. Can be changed to Elogb to obtain E_q[log beta] as transformed data.
 
         Returns
         -------
@@ -145,8 +139,7 @@ class PoissonMF(BaseEstimator, TransformerMixin):
             raise ValueError('There are no pre-trained components.')
         n_samples, n_feats = X.shape
         if n_feats != self.Eb.shape[1]:
-            raise ValueError('The dimension of the transformed data '
-                             'does not match with the existing components.')
+            raise ValueError('The dimension of the transformed data does not match with the existing components.')
         if attr is None:
             attr = 'Et'
         self._init_weights(n_samples)
@@ -155,7 +148,7 @@ class PoissonMF(BaseEstimator, TransformerMixin):
 
     def _update(self, X, update_beta=True):
         # alternating between update latent components and weights
-        old_bd = -np.inf
+        old_bd = -1000#-np.inf
         for i in xrange(self.max_iter):
             self._update_theta(X)
             if update_beta:
@@ -163,10 +156,8 @@ class PoissonMF(BaseEstimator, TransformerMixin):
             bound = self._bound(X)
             improvement = (bound - old_bd) / abs(old_bd)
             if self.verbose:
-                sys.stdout.write('\r\tAfter ITERATION: %d\tObjective: %.2f\t'
-                                 'Old objective: %.2f\t'
-                                 'Improvement: %.5f' % (i, bound, old_bd,
-                                                        improvement))
+                sys.stdout.write('\r\tAfter ITERATION: %d\tObjective: %.2f\t Old objective: %.2f\t Improvement: %.5f' \
+                                 % (i, bound, old_bd, improvement))
                 sys.stdout.flush()
             if improvement < self.tol:
                 break
@@ -177,16 +168,14 @@ class PoissonMF(BaseEstimator, TransformerMixin):
 
     def _update_theta(self, X):
         ratio = X / self._xexplog()
-        self.gamma_t = self.a + np.exp(self.Elogt) * np.dot(
-            ratio, np.exp(self.Elogb).T)
+        self.gamma_t = self.a + np.exp(self.Elogt) * np.dot(ratio, np.exp(self.Elogb).T)
         self.rho_t = self.a * self.c + np.sum(self.Eb, axis=1)
         self.Et, self.Elogt = _compute_expectations(self.gamma_t, self.rho_t)
         self.c = 1. / np.mean(self.Et)
 
     def _update_beta(self, X):
         ratio = X / self._xexplog()
-        self.gamma_b = self.b + np.exp(self.Elogb) * np.dot(
-            np.exp(self.Elogt).T, ratio)
+        self.gamma_b = self.b + np.exp(self.Elogb) * np.dot(np.exp(self.Elogt).T, ratio)
         self.rho_b = self.b + np.sum(self.Et, axis=0, keepdims=True).T
         self.Eb, self.Elogb = _compute_expectations(self.gamma_b, self.rho_b)
 
@@ -198,21 +187,16 @@ class PoissonMF(BaseEstimator, TransformerMixin):
 
     def _bound(self, X):
         bound = np.sum(X * np.log(self._xexplog()) - self.Et.dot(self.Eb))
-        bound += _gamma_term(self.a, self.a * self.c,
-                             self.gamma_t, self.rho_t,
-                             self.Et, self.Elogt)
+        bound += _gamma_term(self.a, self.a * self.c, self.gamma_t, self.rho_t, self.Et, self.Elogt)
         bound += self.n_components * X.shape[0] * self.a * np.log(self.c)
-        bound += _gamma_term(self.b, self.b, self.gamma_b, self.rho_b,
-                             self.Eb, self.Elogb)
+        bound += _gamma_term(self.b, self.b, self.gamma_b, self.rho_b, self.Eb, self.Elogb)
         return bound
 
 
 class OnlinePoissonMF(PoissonMF):
     ''' Poisson matrix factorization with stochastic inference '''
-    def __init__(self, n_components=100, batch_size=10, n_pass=10,
-                 max_iter=100, tol=0.0005, shuffle=True, smoothness=100,
-                 random_state=None, verbose=False,
-                 **kwargs):
+    def __init__(self, n_components=100, batch_size=10, n_pass=10, max_iter=100, tol=0.0005, shuffle=True,
+                 smoothness=100, random_state=None, verbose=False, **kwargs):
         ''' Poisson matrix factorization
 
         Arguments
@@ -230,8 +214,7 @@ class OnlinePoissonMF(PoissonMF):
             Maximal number of iterations to perform for a single mini-batch
 
         tol : float
-            The threshold on the increase of the objective to stop the
-            iteration
+            The threshold on the increase of the objective to stop the iteration
 
         shuffle : bool
             Whether to shuffle the data or not
@@ -281,8 +264,7 @@ class OnlinePoissonMF(PoissonMF):
             Training data.
 
         est_total : int
-            The estimated size of the entire data. Could be larger than the
-            actual size.
+            The estimated size of the entire data. Could be larger than the actual size.
 
         Returns
         -------
@@ -303,8 +285,7 @@ class OnlinePoissonMF(PoissonMF):
             if self.shuffle:
                 np.random.shuffle(indices)
             X_shuffled = X[indices]
-            for (i, istart) in enumerate(xrange(0, n_samples,
-                                                self.batch_size), 1):
+            for (i, istart) in enumerate(xrange(0, n_samples, self.batch_size), 1):
                 print '\tMinibatch %d:' % i
                 iend = min(istart + self.batch_size, n_samples)
                 self.set_learning_rate(iter=i)
@@ -314,9 +295,8 @@ class OnlinePoissonMF(PoissonMF):
         return self
 
     def partial_fit(self, X):
-        '''Fit the data in X as a mini-batch and update the parameter by taking
-        a natural gradient step. Could be invoked from a high-level out-of-core
-        wrapper.
+        '''Fit the data in X as a mini-batch and update the parameter by taking a natural gradient step.
+        Could be invoked from a high-level out-of-core wrapper.
 
         Parameters
         ----------
@@ -332,8 +312,7 @@ class OnlinePoissonMF(PoissonMF):
         # take a (natural) gradient step
         ratio = X / self._xexplog()
         self.gamma_b = (1 - self.rho) * self.gamma_b + self.rho * \
-            (self.b + self._scale * np.exp(self.Elogb) *
-             np.dot(np.exp(self.Elogt).T, ratio))
+            (self.b + self._scale * np.exp(self.Elogb) * np.dot(np.exp(self.Elogt).T, ratio))
         self.rho_b = (1 - self.rho) * self.rho_b + self.rho * \
             (self.b + self._scale * np.sum(self.Et, axis=0, keepdims=True).T)
         self.Eb, self.Elogb = _compute_expectations(self.gamma_b, self.rho_b)
@@ -345,11 +324,9 @@ class OnlinePoissonMF(PoissonMF):
         Parameters
         ----------
         iter : int
-            The current iteration, used to compute a Robbins-Monro type
-            learning rate
+            The current iteration, used to compute a Robbins-Monro type learning rate
         rho : float
-            Directly specify the learning rate. Will override the one computed
-            from the current iteration.
+            Directly specify the learning rate. Will override the one computed from the current iteration.
 
         Returns
         -------
@@ -366,12 +343,10 @@ class OnlinePoissonMF(PoissonMF):
 
     def _stoch_bound(self, X):
         bound = np.sum(X * np.log(self._xexplog()) - self.Et.dot(self.Eb))
-        bound += _gamma_term(self.a, self.a * self.c, self.gamma_t, self.rho_t,
-                             self.Et, self.Elogt)
+        bound += _gamma_term(self.a, self.a * self.c, self.gamma_t, self.rho_t, self.Et, self.Elogt)
         bound += self.n_components * X.shape[0] * self.a * np.log(self.c)
         bound *= self._scale
-        bound += _gamma_term(self.b, self.b, self.gamma_b, self.rho_b,
-                             self.Eb, self.Elogb)
+        bound += _gamma_term(self.b, self.b, self.gamma_b, self.rho_b, self.Eb, self.Elogb)
         return bound
 
 
@@ -383,5 +358,50 @@ def _compute_expectations(alpha, beta):
 
 
 def _gamma_term(a, b, shape, rate, Ex, Elogx):
-    return np.sum((a - shape) * Elogx - (b - rate) * Ex +
-                  (special.gammaln(shape) - shape * np.log(rate)))
+    return np.sum((a - shape) * Elogx - (b - rate) * Ex + (special.gammaln(shape) - shape * np.log(rate)))
+
+###############################################################################
+
+if __name__ == "__main__":
+    R = [
+         [5,3,0,1],
+         [4,0,0,1],
+         [1,1,0,5],
+         [1,0,0,4],
+         [1,0,5,1],
+         [1,2,1,5]
+        ]
+
+    R = np.array(R)
+
+    N = len(R)
+    M = len(R[0])
+    K = 2
+
+
+
+    pmf = PoissonMF(5, 100, 0.0005, 10, None, False)
+
+
+
+    r_new = pmf.fit(R)
+
+    print pmf.gamma_b
+
+    print 1./pmf.rho_b
+
+    print "========================="
+
+    a = np.random.gamma(pmf.gamma_b, 1./pmf.rho_b)
+
+    k = pmf.gamma_b[0][0]
+    l = 1./pmf.rho_b[0][0]
+    print a
+    print k, l
+    print np.random.gamma(k, l)
+
+    print "-----------------------------"
+    b = np.random.gamma(pmf.gamma_t, 1./pmf.rho_t)
+    print a
+    print b
+    print np.random.poisson(np.dot(b, a))

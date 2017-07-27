@@ -1,6 +1,7 @@
 import numpy as np
 from scipy import special
 
+
 class CPF(object):
     def __init__(self, y, K=10, a=0.3, a_prime=0.3, c=0.3, c_prime=0.3, b_prime=1.0, d_prime=1.0):
         self.y = y
@@ -46,7 +47,7 @@ class CPF(object):
                 for k in range(0, self.K):
                     self.phi[u][i][k] = self.update_phi_k(self.gamma_shp[u][k], self.gamma_rte[u][k],
                                         self.lambda_shp[i][k], self.lambda_rte[i][k]) / self.sum_phi_k(u, i)
-                    #self.phi[u][i][k] = np.random.exponential(temp)
+                    # self.phi[u][i][k] = np.random.exponential(temp)
 
     def update_gamma_u_k(self, u, k):
         shp = self.a
@@ -87,7 +88,6 @@ class CPF(object):
             for k in range(0,self.K):
                 self.lambda_shp[i][k], self.lambda_rte[i][k] = self.update_lambda_i_k(i, k)
             self.tau_rte[i] = self.update_tau_rte_i(i)
-
 
     def fit(self, max_iter=10000):
         for iter in range(0, max_iter):

@@ -31,7 +31,7 @@ class UncollapsedGibbsSampling(GibbsSampling):
         if initial_W is not None:
             # this will replace the A matrix generated in the super class. 
             self._W = initial_W
-        self._W = self.sample_W(self._Z)
+        self._W = self.initialize_W()
         assert(self._W.shape == (self._K, self._K))
     
     """
@@ -60,8 +60,8 @@ class UncollapsedGibbsSampling(GibbsSampling):
                     self.metropolis_hastings_K_new(object_index)
                 
             # regularize matrices
-            self.regularize_matrices()    
-
+            self.regularize_matrices()
+            self.sample_W(self._Z)
             # self._W = self.sample_W(self._K)
             
             #if self._alpha_hyper_parameter is not None:
@@ -107,16 +107,16 @@ class UncollapsedGibbsSampling(GibbsSampling):
 
                 # compute the log likelihood when Znk=0
                 self._Z[object_index, feature_index] = 0
-                w0 = self.sample_W(self._Z)
-                prob_z0 = self.log_likelihood_Y(None, self._Z, w0) #(self._Y[[object_index], :], self._Z[[object_index], :])
+                #w0 = self.sample_W(self._Z)
+                prob_z0 = self.log_likelihood_Y(None, self._Z, self._W) #(self._Y[[object_index], :], self._Z[[object_index], :])
                 prob_z0 += log_prob_z0[feature_index]
                 prob_z0 = numpy.exp(prob_z0)
 
                 # compute the log likelihood when Znk=1
                 self._Z[object_index, feature_index] = 1
-                w1 = self.sample_W(self._Z)
+                #w1 = self.sample_W(self._Z)
 
-                prob_z1 = self.log_likelihood_Y(None, self._Z, w1) #(self._Y[[object_index], :], self._Z[[object_index], :])
+                prob_z1 = self.log_likelihood_Y(None, self._Z, self._W) #(self._Y[[object_index], :], self._Z[[object_index], :])
                 prob_z1 += log_prob_z1[feature_index]
                 prob_z1 = numpy.exp(prob_z1)
 
@@ -124,10 +124,10 @@ class UncollapsedGibbsSampling(GibbsSampling):
 
                 if random.random() < Znk_is_0:
                     self._Z[object_index, feature_index] = 0
-                    self._W = numpy.copy(w0)
+                    #self._W = numpy.copy(w0)
                 else:
                     self._Z[object_index, feature_index] = 1
-                    self._W = numpy.copy(w1)
+                    #self._W = numpy.copy(w1)
                     
         return singleton_features
 
@@ -171,7 +171,12 @@ class UncollapsedGibbsSampling(GibbsSampling):
         for i in range(1, K_temp):
             Z_new[object_index][self._K + i] = 1
 
-        W_new = self.sample_W(Z_new)
+        #self.sample_W(Z_new)
+        W_temp = numpy.random.normal(0, self._sigma_w, (K_temp, self._K))
+        W_new = numpy.vstack((self._W, W_temp))
+        W_temp = numpy.vstack((W_temp.transpose(), numpy.random.normal(0, self._sigma_w, (K_temp, K_temp))))
+
+        W_new = numpy.hstack((W_new, W_temp))
 
         # compute the probability of generating new features
         prob_new = numpy.exp(self.log_likelihood_Y(self._Y, Z_new, W_new))
@@ -203,24 +208,51 @@ class UncollapsedGibbsSampling(GibbsSampling):
     def sample_W(self, Z):
         #W_old = numpy.copy(self._W)
         #W_new = numpy.random.normal(numpy.mean(self._W), self._sigma_w, (self._K, self._K))
-        W_new = numpy.zeros((Z.shape[1], Z.shape[1]))
+        #W_new = numpy.zeros((Z.shape[1], Z.shape[1]))
+        #W_new = numpy.copy(self._W)
+        W_old = numpy.copy(self._W)
+        W_new = numpy.copy(self._W)
         for k in range(Z.shape[1]):
             for k_prime in range(k, Z.shape[1]):
-                a = min(Z[:, k].sum(axis=0), Z[:, k_prime].sum(axis=0))
-                if k == k_prime:
-                    W_new[k][k_prime] = 1.0 * self.cal_w_k_k_prime(k, k_prime, Z)
-                    W_new[k_prime][k] = 1.0 * self.cal_w_k_k_prime(k, k_prime, Z)
-                else:
-                    W_new[k][k_prime] = 1.0 * self.cal_w_k_k_prime(k, k_prime, Z)
-                    W_new[k_prime][k] = 1.0 * self.cal_w_k_k_prime(k, k_prime, Z)
-        amax = numpy.amax(W_new)
-        amin = numpy.amin(W_new)
+                min_a = min(Z[:, k].sum(axis=0), Z[:, k_prime].sum(axis=0))
+                #if k == k_prime:
+                a = numpy.dot(Z[:, k], Z[:, k_prime]) / Z.shape[0]
+                #print a, Z.shape[0]
+                #b = numpy.random.beta(1.0 + a, Z.shape[0] - a - 1.0, 1)[0]
+                b = numpy.random.binomial(Z.shape[0], a, 1)[0]
+                logit_s =  numpy.random.normal(a, self._sigma_w) #self.logit(b) #
+                W_new[k][k_prime] = logit_s #1.0 * self.cal_w_k_k_prime(k, k_prime, Z)
+                W_new[k_prime][k] = logit_s #1.0 * self.cal_w_k_k_prime(k, k_prime, Z)
+        #amax = numpy.amax(W_new)
+        #amin = numpy.amin(W_new)
+        # print W_new
+        #W_new = self.convert_range(W_new, (amin-amax), (amax-amin))
+        prob_new = numpy.exp(self.log_likelihood_Y(self._Y, self._Z, W_new))
+
+        # compute the probability of using old features
+        prob_old = numpy.exp(self.log_likelihood_Y(self._Y, self._Z, W_old))
+
+        # compute the probability of generating new features
+        prob_new = prob_new / (prob_old + prob_new)
+
+        # if we accept the proposal, we will replace old W matrix
+        if random.random() < prob_new:
+            # construct A_new and Z_new
+            self._W = numpy.copy(W_new)
+            return True
+
+        return False
+                #else:
+                #    W_new[k][k_prime] = 1.0 * self.cal_w_k_k_prime(k, k_prime, Z)
+                #    W_new[k_prime][k] = 1.0 * self.cal_w_k_k_prime(k, k_prime, Z)
+        #amax = numpy.amax(W_new)
+        #amin = numpy.amin(W_new)
         #print W_new
         #W_new = self.convert_range(W_new, (amin-amax), (amax-amin))
         #W_new = preprocessing.normalize(W_new, norm='l2')
         #W_normed = (W_new - W_new.min(0)) / W_new.ptp(0)
         #print W_new
-        return  W_new
+        #return  W_new
 
     def cal_w_k_k_prime(self, k, k_prime, Z):
         w_k_k_prime = 0
@@ -248,13 +280,13 @@ class UncollapsedGibbsSampling(GibbsSampling):
         #print self._K, indices, [k for k in range(self._K) if k not in indices]
 
         self._Z = self._Z[:, [k for k in range(self._K) if k not in indices[0]]]
-        #self._W = self._W[[k for k in range(self._K) if k not in indices[0]], :]
+        self._W = self._W[[k for k in range(self._K) if k not in indices[0]], :]
 
-        #self._W = self._W[:, [k for k in range(self._K) if k not in indices[0]]]
+        self._W = self._W[:, [k for k in range(self._K) if k not in indices[0]]]
 
 
         self._K = self._Z.shape[1]
-        self._W = self.sample_W(self._Z)
+        self.sample_W(self._Z)
 
         assert(self._Z.shape == (self._N, self._K))
         assert(self._W.shape == (self._K, self._K))
@@ -416,8 +448,8 @@ if __name__ == '__main__':
     #ibp = UncollapsedGibbsSampling(10)
     ibp = UncollapsedGibbsSampling(alpha_hyper_parameter, sigma_y_hyper_parameter, sigma_w_hyper_parameter, True)
     #ibp = UncollapsedGibbsSampling(alpha_hyper_parameter)
-    #data = ibp.load_kinship()
-    data = ibp.load_lazega_friend()
+    data = ibp.load_kinship()
+    #data = ibp.load_lazega_friend()
     ibp._initialize(data, 1.0, 1.0, 0.5, None, None, None)
     #ibp._initialize(data[0:1000, :], 1.0, 1.0, 1.0, None, features[0:1000, :])
     #print ibp._Z, "\n", ibp._A

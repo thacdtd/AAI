@@ -162,12 +162,9 @@ class PoissonMF(BaseEstimator, TransformerMixin):
 
     def _bound(self, X):
         bound = np.sum(X * np.log(self._xexplog()) - self.Et.dot(self.Eb))
-        bound += _gamma_term(self.a, self.a * self.c,
-                             self.gamma_t, self.rho_t,
-                             self.Et, self.Elogt)
+        bound += _gamma_term(self.a, self.a * self.c, self.gamma_t, self.rho_t, self.Et, self.Elogt)
         bound += self.n_components * X.shape[0] * self.a * np.log(self.c)
-        bound += _gamma_term(self.b, self.b, self.gamma_b, self.rho_b,
-                             self.Eb, self.Elogb)
+        bound += _gamma_term(self.b, self.b, self.gamma_b, self.rho_b, self.Eb, self.Elogb)
         return bound
 
 

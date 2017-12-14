@@ -14,34 +14,23 @@ from sklearn.base import BaseEstimator, TransformerMixin
 
 
 class PoissonMF(BaseEstimator, TransformerMixin):
-    """" Poisson matrix factorization with batch inference """
     def __init__(self, n_components=100, max_iter=100, tol=0.0005, smoothness=100, random_state=None, verbose=False,
                  **kwargs):
-        """"
+        """
         Poisson matrix factorization
-
-        Arguments
-        ---------
-        n_components : int
+        :param n_components: int
             Number of latent components
-
-        max_iter : int
+        :param max_iter: int
             Maximal number of iterations to perform
-
-        tol : float
-            The threshold on the increase of the objective to stop the
-            iteration
-
-        smoothness : int
+        :param tol: float
+            The threshold on the increase of the objective to stop the iteration
+        :param smoothness: int
             Smoothness on the initialization variational parameters
-
-        random_state : int or RandomState
+        :param random_state: int or RandomState
             Pseudo random number generator used for sampling
-
-        verbose : bool
+        :param verbose: bool
             Whether to show progress during model fitting
-
-        **kwargs: dict
+        :param kwargs: dict
             Model hyperparameters
         """
 
@@ -74,18 +63,11 @@ class PoissonMF(BaseEstimator, TransformerMixin):
     def set_components(self, shape, rate):
         """
         Set the latent components from variational parameters.
-
-        Parameters
-        ----------
-        shape : numpy-array, shape (n_components, n_feats)
+        :param shape: numpy-array, shape (n_components, n_feats)
             Shape parameters for the variational distribution
-
-        rate : numpy-array, shape (n_components, n_feats)
+        :param rate: numpy-array, shape (n_components, n_feats)
             Rate parameters for the variational distribution
-
-        Returns
-        -------
-        self : object
+        :return: self : object
             Return the instance itself.
         """
 
@@ -110,6 +92,7 @@ class PoissonMF(BaseEstimator, TransformerMixin):
         :return: self: object
             Returns the instance itself.
         """
+
         n_samples, n_feats = X.shape
         self._init_components(n_feats)
         self._init_weights(n_samples)
@@ -126,6 +109,7 @@ class PoissonMF(BaseEstimator, TransformerMixin):
         :return: X_new : array-like, shape(n_samples, n_filters)
             Transformed data, as specified by attr.
         """
+
         if not hasattr(self, 'Eb'):
             raise ValueError('There are no pre-trained components.')
         n_samples, n_feats = X.shape
@@ -189,10 +173,8 @@ class PoissonMF(BaseEstimator, TransformerMixin):
 
 class OnlinePoissonMF(PoissonMF):
     # Poisson matrix factorization with stochastic inference
-    def __init__(self, n_components=100, batch_size=10, n_pass=10,
-                 max_iter=100, tol=0.0005, shuffle=True, smoothness=100,
-                 random_state=None, verbose=False,
-                 **kwargs):
+    def __init__(self, n_components=100, batch_size=10, n_pass=10, max_iter=100, tol=0.0005, shuffle=True,
+                 smoothness=100, random_state=None, verbose=False, **kwargs):
         """
         Poisson matrix factorization
         :param n_components: int
@@ -250,6 +232,7 @@ class OnlinePoissonMF(PoissonMF):
         :return: self: object
             Returns the instance itself.
         """
+
         n_samples, n_feats = X.shape
         if est_total is None:
             self._scale = float(n_samples) / self.batch_size
@@ -277,11 +260,12 @@ class OnlinePoissonMF(PoissonMF):
         """
         Fit the data in X as a mini-batch and update the parameter by taking a natural gradient step. Could be invoked
         from a high-level out-of-core wrapper.
-        :param X: rray-like, shape (batch_size, n_feats)
+        :param X: array-like, shape (batch_size, n_feats)
             Mini-batch data.
         :return: self: object
             Returns the instance itself.
         """
+
         self.transform(X)
         # take a (natural) gradient step
         ratio = X / self._xexplog()
@@ -302,6 +286,7 @@ class OnlinePoissonMF(PoissonMF):
         :return: self: object
             Returns the instance itself.
         """
+
         if rho is not None:
             self.rho = rho
         elif iter is not None:
